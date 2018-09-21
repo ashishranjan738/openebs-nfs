@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name:   ubuntu
+spec:
+  containers:
+    - name: ubuntu
+      image: ashishranjan738/vanillaubuntu:latest
+      volumeMounts:
+      - name: nfstest
+        mountPath: /mnt
+  volumes:
+  - name: nfstest
+    persistentVolumeClaim:
+      claimName: nfspvc

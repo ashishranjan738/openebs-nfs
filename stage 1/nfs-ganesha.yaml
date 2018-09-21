@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-ganesha
+  labels:
+    app: nfs 
+spec:
+  containers:
+  - image: quay.io/luis_pabon0/ganesha
+    ports:
+    - name: nfs
+      containerPort: 2049
+    - name: mountd
+      containerPort: 20048
+    - name: rpcbind
+      containerPort: 111
+    imagePullPolicy: IfNotPresent
+    name: nfs-ganesha
+    volumeMounts:
+    - name: nfs-ganesha-exports
+      mountPath: "/exports"
+    securityContext:
+      capabilities: {}
+      privileged: true
+  volumes:
+  - name: nfs-ganesha-exports
+    persistentVolumeClaim:
+      claimName: openebspvc
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nfs-server
+spec:
+  ports:
+    - name: nfs
+      port: 2049
+    - name: mountd
+      port: 20048
+    - name: rpcbind
+      port: 111
+  selector:
+    app: nfs
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: openebspvc
+spec:
+  storageClassName: openebsstorageclass
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "40G"
+---
+apiVersion: openebs.io/v1alpha1
+kind: StoragePool
+metadata:
+  name: openebsstoragepool
+  type: hostdir
+spec:
+  path: "/exports"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebsstorageclass
+  annotations:
+    cas.openebs.io/config: |
+      - name: ControllerImage
+        value: openebs/jiva:0.7.0-RC2
+      - name: ReplicaImage
+        value: openebs/jiva:0.7.0-RC2
+      - name: VolumeMonitorImage
+        value: openebs/m-exporter:0.7.0-RC2
+      - name: ReplicaCount
+        value: "3"
+      - name: StoragePool
+        value: openebsstoragepool
+      #- name: TargetResourceLimits
+      #  value: |-
+      #      memory: 1Gi
+      #      cpu: 100m
+      #- name: AuxResourceLimits
+      #  value: |-
+      #      memory: 0.5Gi
+      #      cpu: 50m
+      #- name: ReplicaResourceLimits
+      #  value: |-
+      #      memory: 2Gi
+provisioner: openebs.io/provisioner-iscsi
